@@ -2,100 +2,137 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// deliveries_len은 배열 deliveries의 길이입니다.
-// pickups_len은 배열 pickups의 길이입니다.
+typedef struct {
+    int price;
+    int sale;
+} emoticon;
 
-int array_sum(int* array, int n) {   //배열 더하기 (start to end)
-    int arraySum = 0;
-    for (int i = 0; i < n; i++) {
-        arraySum += array[i];
-    }
-    return arraySum;
+int calc_sale(int price, int sale) {
+    return (price * (100 - sale)) / 100;
 }
 
-long long last_home_distance(int* deliver, int* pickup, int n) {   //트럭이 다녀올 가장 먼 집 거리
-    int distance = 0;
-    for (int i = n - 1; i >= 0; i--) {
-        if ((deliver[i] != 0) || (pickup[i]) != 0) {
-            distance = i;
-            break;
+int* check(int** u, size_t u_len, emoticon e[], size_t e_len) {
+    int membership = 0;
+    int money = 0;
+
+    int wallet[u_len];
+    for (int i = 0; i < u_len; i++) {
+        wallet[i] = 0;
+    }
+
+    for (int i = 0; i < e_len; i++) {
+        for (int j = 0; j < u_len; j++) {
+            if (u[j][0] <= e[i].sale)
+                wallet[j] += calc_sale(e[i].price, e[i].sale);
         }
     }
-    return distance + 1;
-}
 
-long long solution(int cap, int n, int deliveries[], size_t deliveries_len, int pickups[], size_t pickups_len) {
-    long long answer = 0;
-    long long distance = 0;
-    typedef struct { //트럭 구조체
-        int full_box;
-        int empty_box;
-    } truck_struct;
-
-    typedef struct { //집 구조체
-        int* deliver;
-        int* pickup;
-    } home_struct;
-
-    truck_struct truck = { 0,0 };                      //꽉 찬 상자, 빈 상자
-    home_struct home = { deliveries, pickups };      //배달, 픽업
-    int total_deliver = array_sum(home.deliver, n);  //배달해야 할 상자들
-    int total_pickup = array_sum(home.pickup, n);    //픽업해야 할 상자들
-    distance = last_home_distance(home.deliver, home.pickup, n);
-    while (!((total_deliver == 0) && (total_pickup == 0))) {
-        truck.full_box = 0;     //트럭 청소하고
-        truck.empty_box = 0;
-
-        distance = last_home_distance(home.deliver, home.pickup, distance); //네비게이션 찍고
-        answer += 2 * distance; //거리 계산
-
-        //배송할 박스 계산
-        if (total_deliver >= cap) {
-            truck.full_box = cap;
-            total_deliver -= cap;
-        }
-        else {
-            truck.full_box = total_deliver;
-            total_deliver = 0;
-        }
-
-        //픽업할 박스 계산
-        if (total_pickup >= cap)
-            total_pickup -= cap;
+    for (int i = 0; i < u_len; i++) {
+        if (u[i][1] <= wallet[i])
+            membership++;
         else
-            total_pickup = 0;
+            money += wallet[i];
+    }
 
-        // 마지막부터 차례대로 배달
-        for (int i = distance - 1; i >= 0; i--) {
-            if ((truck.full_box > 0) && (home.deliver[i] > 0)) {    // 박스 여부, 배달 여부 확인
-                if (truck.full_box >= home.deliver[i]) {            // 박스 >= 배달
-                    truck.full_box -= home.deliver[i];
-                    home.deliver[i] = 0;
-                }
-                else {                                            // 박스 < 배달
-                    home.deliver[i] -= truck.full_box;
-                    truck.full_box = 0;
-                }
-                if (truck.full_box == 0)
-                    break;
-            }
-        }
+    int* answer = (int*)malloc(sizeof(int) * 2);
+    answer[0] = membership;
+    answer[1] = money;
 
-        // 마지막부터 차례대로 픽업
-        for (int i = distance - 1; i >= 0; i--) {
-            if ((truck.empty_box < cap) && (home.pickup[i] > 0)) {  // 공간 여부, 픽업 여부 확인
-                if ((truck.empty_box + home.pickup[i]) <= cap) {    // 빈 공간 >= 픽업
-                    truck.empty_box += home.pickup[i];
-                    home.pickup[i] = 0;
-                }
-                else {                                            // 빈 공간 < 픽업
-                    home.pickup[i] -= (cap - truck.empty_box);
-                    truck.empty_box = cap;
-                }
-                if (truck.empty_box == cap)
-                    break;
-            }
+    return answer;
+}
+
+// 정수로 할인율 계산
+int calculateSale(int sale) {
+    return sale * 10; // 10, 20, 30, 40으로 변환
+}
+
+void printEmoticons(emoticon e[], size_t e_len) {
+    printf("Emoticons: ");
+    for (size_t i = 0; i < e_len; i++) {
+        printf("(%d, %d) ", e[i].price, e[i].sale);
+    }
+    printf("\n");
+}
+
+void exploreCombinations(emoticon e[], size_t e_len, int** users, size_t u_len, size_t index, int* result) {
+    int* tempResult = check(users, u_len, e, e_len);
+
+    // 현재 결과가 더 나쁜 경우는 무시
+    if (tempResult[0] < result[0] || (tempResult[0] == result[0] && tempResult[1] < result[1])) {
+        free(tempResult);
+        return;
+    }
+
+    // 현재 결과가 더 좋은 경우 갱신
+    result[0] = tempResult[0];
+    result[1] = tempResult[1];
+    free(tempResult);
+
+    if (index == e_len) {
+        // Base case: 마지막 이모티콘까지 조합을 정했을 때
+        return;
+    }
+
+    // 디버깅을 위한 출력 코드
+    printEmoticons(e, e_len);
+
+    // 현재 이모티콘의 세일을 10, 20, 30, 40 중 하나로 정함
+    for (int sale = 1; sale <= 4; sale++) {
+        e[index].sale = calculateSale(sale);
+        exploreCombinations(e, e_len, users, u_len, index + 1, result);
+    }
+}
+
+
+// users_rows는 2차원 배열 users의 행 길이, users_cols는 2차원 배열 users의 열 길이입니다.
+// emoticons_len은 배열 emoticons의 길이입니다.
+int* solution(int** users, size_t users_rows, size_t users_cols, int emoticons[], size_t emoticons_len) {
+    emoticon emo[emoticons_len];
+    for (size_t i = 0; i < emoticons_len; i++) {
+        emo[i].price = emoticons[i];
+        emo[i].sale = 0;
+    }
+
+    // 결과를 저장할 배열 초기화
+    int* result = (int*)malloc(sizeof(int) * 2);
+
+    result[0] = 0;
+    result[1] = 0;
+
+    // 중첩 반복문 대신 재귀 함수를 호출하여 가능한 모든 조합을 탐색
+    exploreCombinations(emo, emoticons_len, users, users_rows, 0, result);
+
+    return result;
+}
+
+int main() {
+    int emoticon_prices[] = { 1300, 1500, 1600, 4900 };
+    int users_data[][2] = { {40, 2900}, {23, 10000}, {11, 5200}, {5, 5900}, {40, 3100}, {27, 9200}, {32, 6900} };
+
+    // 2차원 배열을 동적으로 할당
+    size_t users_rows = sizeof(users_data) / sizeof(users_data[0]);
+    size_t users_cols = sizeof(users_data[0]) / sizeof(users_data[0][0]);
+    int** users = (int**)malloc(users_rows * sizeof(int*));
+    for (size_t i = 0; i < users_rows; i++) {
+        users[i] = (int*)malloc(users_cols * sizeof(int));
+        for (size_t j = 0; j < users_cols; j++) {
+            users[i][j] = users_data[i][j];
         }
     }
-    return answer;
+
+    size_t emoticons_len = sizeof(emoticon_prices) / sizeof(emoticon_prices[0]);
+
+    int* result = solution(users, users_rows, users_cols, emoticon_prices, emoticons_len);
+
+    // 결과값 출력
+    printf("[%d, %d]\n", result[0], result[1]);
+
+    // 메모리 해제
+    for (size_t i = 0; i < users_rows; i++) {
+        free(users[i]);
+    }
+    free(users);
+    free(result);
+
+    return 0;
 }

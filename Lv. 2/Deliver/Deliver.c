@@ -2,137 +2,97 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-typedef struct {
-    int price;
-    int sale;
-} emoticon;
+// deliveries_lenì€ ë°°ì—´ deliveriesì˜ ê¸¸ì´ì…ë‹ˆë‹¤.
+// pickups_lenì€ ë°°ì—´ pickupsì˜ ê¸¸ì´ì…ë‹ˆë‹¤.
 
-int calc_sale(int price, int sale) {
-    return (price * (100 - sale)) / 100;
+int array_sum(int* array, int n) {   //ë°°ì—´ ë”í•˜ê¸° (start to end)
+    int arraySum = 0;
+    for (int i = 0; i < n; i++) {
+        arraySum += array[i];
+    }
+    return arraySum;
 }
 
-int* check(int** u, size_t u_len, emoticon e[], size_t e_len) {
-    int membership = 0;
-    int money = 0;
-
-    int wallet[u_len];
-    for (int i = 0; i < u_len; i++) {
-        wallet[i] = 0;
-    }
-
-    for (int i = 0; i < e_len; i++) {
-        for (int j = 0; j < u_len; j++) {
-            if (u[j][0] <= e[i].sale)
-                wallet[j] += calc_sale(e[i].price, e[i].sale);
+long long last_home_distance(int* deliver, int* pickup, int n) {   //íŠ¸ëŸ­ì´ ë‹¤ë…€ì˜¬ ê°€ì¥ ë¨¼ ì§‘ ê±°ë¦¬
+    int distance = 0;
+    for (int i = n - 1; i >= 0; i--) {
+        if ((deliver[i] != 0) || (pickup[i]) != 0) {
+            distance = i;
+            break;
         }
     }
+    return distance + 1;
+}
 
-    for (int i = 0; i < u_len; i++) {
-        if (u[i][1] <= wallet[i])
-            membership++;
+long long solution(int cap, int n, int deliveries[], size_t deliveries_len, int pickups[], size_t pickups_len) {
+    long long answer = 0;
+    long long distance = 0;
+    typedef struct { //íŠ¸ëŸ­ êµ¬ì¡°ì²´
+        int full_box;
+        int empty_box;
+    } truck_struct;
+
+    typedef struct { //ì§‘ êµ¬ì¡°ì²´
+        int* deliver;
+        int* pickup;
+    } home_struct;
+
+    truck_struct truck = {0,0};                      //ê½‰ ì°¬ ìƒì, ë¹ˆ ìƒì
+    home_struct home = { deliveries, pickups };      //ë°°ë‹¬, í”½ì—…
+    int total_deliver = array_sum(home.deliver, n);  //ë°°ë‹¬í•´ì•¼ í•  ìƒìë“¤
+    int total_pickup = array_sum(home.pickup, n);    //í”½ì—…í•´ì•¼ í•  ìƒìë“¤
+    distance = last_home_distance(home.deliver, home.pickup, n); 
+    while (!((total_deliver == 0) && (total_pickup == 0))) {
+        truck.full_box = 0;     //íŠ¸ëŸ­ ì²­ì†Œí•˜ê³ 
+        truck.empty_box = 0;
+        
+        distance = last_home_distance(home.deliver, home.pickup, distance); //ë„¤ë¹„ê²Œì´ì…˜ ì°ê³ 
+        answer += 2 * distance; //ê±°ë¦¬ ê³„ì‚°
+        
+        //ë°°ì†¡í•  ë°•ìŠ¤ ê³„ì‚°
+        if (total_deliver >= cap) {
+            truck.full_box = cap;
+            total_deliver -= cap;
+        } else {
+            truck.full_box = total_deliver;
+            total_deliver = 0;
+        }
+
+        //í”½ì—…í•  ë°•ìŠ¤ ê³„ì‚°
+        if (total_pickup >= cap)
+            total_pickup -= cap;
         else
-            money += wallet[i];
-    }
+            total_pickup = 0;
 
-    int* answer = (int*)malloc(sizeof(int) * 2);
-    answer[0] = membership;
-    answer[1] = money;
+        // ë§ˆì§€ë§‰ë¶€í„° ì°¨ë¡€ëŒ€ë¡œ ë°°ë‹¬
+        for (int i = distance-1; i >= 0; i--) {
+            if ((truck.full_box > 0) && (home.deliver[i] > 0)) {    // ë°•ìŠ¤ ì—¬ë¶€, ë°°ë‹¬ ì—¬ë¶€ í™•ì¸
+                if (truck.full_box >= home.deliver[i]) {            // ë°•ìŠ¤ >= ë°°ë‹¬
+                    truck.full_box -= home.deliver[i];
+                    home.deliver[i] = 0;
+                } else {                                            // ë°•ìŠ¤ < ë°°ë‹¬
+                    home.deliver[i] -= truck.full_box;
+                    truck.full_box = 0;
+                }
+                if(truck.full_box == 0) 
+                    break;
+            }
+        }
 
-    return answer;
-}
-
-// Á¤¼ö·Î ÇÒÀÎÀ² °è»ê
-int calculateSale(int sale) {
-    return sale * 10; // 10, 20, 30, 40À¸·Î º¯È¯
-}
-
-void printEmoticons(emoticon e[], size_t e_len) {
-    printf("Emoticons: ");
-    for (size_t i = 0; i < e_len; i++) {
-        printf("(%d, %d) ", e[i].price, e[i].sale);
-    }
-    printf("\n");
-}
-
-void exploreCombinations(emoticon e[], size_t e_len, int** users, size_t u_len, size_t index, int* result) {
-    int* tempResult = check(users, u_len, e, e_len);
-
-    // ÇöÀç °á°ú°¡ ´õ ³ª»Û °æ¿ì´Â ¹«½Ã
-    if (tempResult[0] < result[0] || (tempResult[0] == result[0] && tempResult[1] < result[1])) {
-        free(tempResult);
-        return;
-    }
-
-    // ÇöÀç °á°ú°¡ ´õ ÁÁÀº °æ¿ì °»½Å
-    result[0] = tempResult[0];
-    result[1] = tempResult[1];
-    free(tempResult);
-
-    if (index == e_len) {
-        // Base case: ¸¶Áö¸· ÀÌ¸ğÆ¼ÄÜ±îÁö Á¶ÇÕÀ» Á¤ÇßÀ» ¶§
-        return;
-    }
-
-    // µğ¹ö±ëÀ» À§ÇÑ Ãâ·Â ÄÚµå
-    printEmoticons(e, e_len);
-
-    // ÇöÀç ÀÌ¸ğÆ¼ÄÜÀÇ ¼¼ÀÏÀ» 10, 20, 30, 40 Áß ÇÏ³ª·Î Á¤ÇÔ
-    for (int sale = 1; sale <= 4; sale++) {
-        e[index].sale = calculateSale(sale);
-        exploreCombinations(e, e_len, users, u_len, index + 1, result);
-    }
-}
-
-
-// users_rows´Â 2Â÷¿ø ¹è¿­ usersÀÇ Çà ±æÀÌ, users_cols´Â 2Â÷¿ø ¹è¿­ usersÀÇ ¿­ ±æÀÌÀÔ´Ï´Ù.
-// emoticons_lenÀº ¹è¿­ emoticonsÀÇ ±æÀÌÀÔ´Ï´Ù.
-int* solution(int** users, size_t users_rows, size_t users_cols, int emoticons[], size_t emoticons_len) {
-    emoticon emo[emoticons_len];
-    for (size_t i = 0; i < emoticons_len; i++) {
-        emo[i].price = emoticons[i];
-        emo[i].sale = 0;
-    }
-
-    // °á°ú¸¦ ÀúÀåÇÒ ¹è¿­ ÃÊ±âÈ­
-    int* result = (int*)malloc(sizeof(int) * 2);
-
-    result[0] = 0;
-    result[1] = 0;
-
-    // ÁßÃ¸ ¹İº¹¹® ´ë½Å Àç±Í ÇÔ¼ö¸¦ È£ÃâÇÏ¿© °¡´ÉÇÑ ¸ğµç Á¶ÇÕÀ» Å½»ö
-    exploreCombinations(emo, emoticons_len, users, users_rows, 0, result);
-
-    return result;
-}
-
-int main() {
-    int emoticon_prices[] = { 1300, 1500, 1600, 4900 };
-    int users_data[][2] = { {40, 2900}, {23, 10000}, {11, 5200}, {5, 5900}, {40, 3100}, {27, 9200}, {32, 6900} };
-
-    // 2Â÷¿ø ¹è¿­À» µ¿ÀûÀ¸·Î ÇÒ´ç
-    size_t users_rows = sizeof(users_data) / sizeof(users_data[0]);
-    size_t users_cols = sizeof(users_data[0]) / sizeof(users_data[0][0]);
-    int** users = (int**)malloc(users_rows * sizeof(int*));
-    for (size_t i = 0; i < users_rows; i++) {
-        users[i] = (int*)malloc(users_cols * sizeof(int));
-        for (size_t j = 0; j < users_cols; j++) {
-            users[i][j] = users_data[i][j];
+        // ë§ˆì§€ë§‰ë¶€í„° ì°¨ë¡€ëŒ€ë¡œ í”½ì—…
+        for (int i = distance-1; i >= 0; i--) {
+            if ((truck.empty_box < cap) && (home.pickup[i] > 0)) {  // ê³µê°„ ì—¬ë¶€, í”½ì—… ì—¬ë¶€ í™•ì¸
+                if ((truck.empty_box + home.pickup[i]) <= cap) {    // ë¹ˆ ê³µê°„ >= í”½ì—…
+                    truck.empty_box += home.pickup[i];
+                    home.pickup[i] = 0;
+                } else {                                            // ë¹ˆ ê³µê°„ < í”½ì—…
+                    home.pickup[i] -= (cap - truck.empty_box);
+                    truck.empty_box = cap;
+                }
+                if(truck.empty_box == cap) 
+                    break;
+            }
         }
     }
-
-    size_t emoticons_len = sizeof(emoticon_prices) / sizeof(emoticon_prices[0]);
-
-    int* result = solution(users, users_rows, users_cols, emoticon_prices, emoticons_len);
-
-    // °á°ú°ª Ãâ·Â
-    printf("[%d, %d]\n", result[0], result[1]);
-
-    // ¸Ş¸ğ¸® ÇØÁ¦
-    for (size_t i = 0; i < users_rows; i++) {
-        free(users[i]);
-    }
-    free(users);
-    free(result);
-
-    return 0;
+    return answer;
 }
